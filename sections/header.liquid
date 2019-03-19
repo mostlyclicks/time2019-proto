@@ -1,552 +1,344 @@
-{% if section.settings.message %}
-  <style>
-    {% if section.settings.logo != blank %}
-      .site-header__logo-image {
-        max-width: {{ section.settings.logo_max_width | escape }}px;
-      }
-    {% endif %}
+{%- assign main_menu = linklists[section.settings.main_menu_link_list] -%}
+{%- assign toolbar_menu = linklists[section.settings.toolbar_menu] -%}
 
-    {% if section.settings.align_logo == 'left' %}
-      .site-header__logo-image {
-        margin: 0;
-      }
-    {% endif %}
-  </style>
+{%- assign logo_alignment = 'left' -%}
+{% if section.settings.main_menu_alignment == 'center-left' or section.settings.main_menu_alignment == 'center-split' or section.settings.main_menu_alignment == 'center' or section.settings.main_menu_alignment == 'center-drawer' %}
+  {%- assign logo_alignment = 'center' -%}
 {% endif %}
+
+{%- assign dropdown_alignment = 'left' -%}
+{% if section.settings.main_menu_alignment == 'left-center' or section.settings.main_menu_alignment == 'center-split' or section.settings.main_menu_alignment == 'center' %}
+  {%- assign dropdown_alignment = 'center' -%}
+{% endif %}
+
+{% include 'drawer-menu' %}
+{% include 'cart-drawer' %}
+
+{%- assign template_name = template | replace: '.', ' ' | truncatewords: 2, '' | handle -%}
+
+{%- assign sticky_header = false -%}
+{% if section.settings.header_style == 'sticky' %}
+  {%- assign sticky_header = true -%}
+{% endif %}
+{%- assign overlay_header = false -%}
+{%- assign has_logo = false -%}
+{% if template_name == 'index' and section.settings.sticky_index %}
+  {%- assign overlay_header = true -%}
+{% endif %}
+{% if template_name == 'collection' and collection.image and section.settings.sticky_collection %}
+  {%- assign overlay_header = true -%}
+{% endif %}
+
+<style>
+  .site-nav__link,
+  .site-nav__dropdown-link:not(.site-nav__dropdown-link--top-level) {
+    font-size: {{ settings.type_navigation_size }}px;
+  }
+
+  {% if settings.type_navigation_size < 18 %}
+    .site-nav__link {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+  {% endif %}
+</style>
 
 <div data-section-id="{{ section.id }}" data-section-type="header-section">
-  {% if section.settings.message %}
-    {% if section.settings.home_page_only == false or template.name == 'index' %}
-      <style>
-        .announcement-bar {
-          background-color: {{ section.settings.color_bg }};
-        }
+  {% if overlay_header %}
+    {% include 'announcement-bar' %}
+  {% endif %}
 
-        .announcement-bar--link:hover {
-          {% assign brightness = section.settings.color_bg | color_brightness %}
-
-          {% if brightness <= 192 %}
-            {% assign lightenAmount = 255 | minus: brightness | divided_by: 255 | times: 16 %}
-            background-color: {{ section.settings.color_bg | color_lighten: lightenAmount }};
-          {% else %}
-            {% assign darkenAmount = 255 | divided_by: brightness | times: 8 %}
-            background-color: {{ section.settings.color_bg | color_darken: darkenAmount }};
-          {% endif %}
-        }
-
-        .announcement-bar__message {
-          color: {{ section.settings.color_text }};
-        }
-      </style>
-
-      {% if section.settings.message_link == blank %}
-        <div class="announcement-bar">
-      {% else %}
-        <a href="{{ section.settings.message_link }}" class="announcement-bar announcement-bar--link">
-      {% endif %}
-
-        <p class="announcement-bar__message">{{ section.settings.message_text | escape }}</p>
-
-      {% if section.settings.message_link == blank %}
-        </div>
-      {% else %}
-        </a>
-      {% endif %}
-
+  {% unless overlay_header %}
+    {% if section.settings.toolbar_currencies or section.settings.toolbar_social or section.settings.toolbar_menu != blank %}
+      {% include 'toolbar', overlay_header: overlay_header  %}
     {% endif %}
-  {% endif %}
+  {% endunless %}
 
-  <header class="site-header{% if section.settings.align_logo == 'left' %} border-bottom logo--left{% else %} logo--center{% endif %}" role="banner">
-    <div class="grid grid--no-gutters grid--table site-header__mobile-nav">
-      {% if section.settings.align_logo == 'center' %}
-        {%- assign logo_classes = 'medium-up--one-third medium-up--push-one-third logo-align--center' -%}
-      {% else %}
-        {%- assign logo_classes = 'medium-up--one-quarter logo-align--left' -%}
-      {% endif %}
+  <div class="header-sticky-wrapper">
+    <div class="header-wrapper{% if overlay_header %} header-wrapper--sticky is-light{% endif %}">
 
-      <div class="grid__item {{ logo_classes }}">
-        {% comment %}
-          Use the uploaded logo from theme settings if enabled.
-          Site name gets precedence with H1 tag on homepage, div on other pages.
-        {% endcomment %}
-        {% if template.name == 'index' %}
-          <h1 class="h2 site-header__logo">
-        {% else %}
-          <div class="h2 site-header__logo">
+      {% if overlay_header %}
+        {% if section.settings.toolbar_currencies or section.settings.toolbar_social or section.settings.toolbar_menu != blank %}
+          {% include 'toolbar', overlay_header: overlay_header  %}
         {% endif %}
-          {% if section.settings.logo %}
-            {%- assign img_url = section.settings.logo | img_url: '1x1' | replace: '_1x1.', '_{width}x.' -%}
-            <a href="/" class="site-header__logo-image{% if section.settings.align_logo == 'center' %} site-header__logo-image--centered{% endif %}">
-              {% capture logo_alt %}{{ section.settings.logo.alt | default: shop.name }}{% endcapture %}
-              <img class="lazyload js"
-                   src="{{ section.settings.logo | img_url: '300x300' }}"
-                   data-src="{{ img_url }}"
-                   data-widths="[180, 360, 540, 720, 900, 1080, 1296, 1512, 1728, 2048]"
-                   data-aspectratio="{{ section.settings.logo.aspect_ratio }}"
-                   data-sizes="auto"
-                   alt="{{ logo_alt | escape }}"
-                   style="max-width: {{ section.settings.logo_max_width }}px">
-              <noscript>
-                {% capture image_size %}{{ section.settings.logo_max_width | escape }}x{% endcapture %}
-                <img src="{{ section.settings.logo | img_url: image_size }}"
-                     srcset="{{ section.settings.logo | img_url: image_size }} 1x, {{ section.settings.logo | img_url: image_size, scale: 2 }} 2x"
-                     alt="{{ section.settings.logo.alt | default: shop.name }}"
-                     style="max-width: {{ section.settings.logo_max_width }}px;">
-              </noscript>
-            </a>
-          {% else %}
-            <a class="site-header__logo-link" href="/">{{ shop.name }}</a>
-          {% endif %}
-        {% if template.name == 'index' %}
-          </h1>
-        {% else %}
-          </div>
-        {% endif %}
-      </div>
-
-      {% if section.settings.align_logo == 'left' %}
-        <nav class="grid__item medium-up--one-half small--hide" id="AccessibleNav" role="navigation">
-          {% include 'site-nav' %}
-        </nav>
       {% endif %}
+      <header
+        class="site-header{% if settings.type_navigation_style == 'heading' %} site-header--heading-style{% endif %}"
+        data-sticky="{{ sticky_header }}">
+        <div class="page-width">
+          <div
+            class="header-layout header-layout--{{ section.settings.main_menu_alignment }}"
+            data-logo-align="{{ logo_alignment }}">
 
-      <div class="grid__item {% if section.settings.align_logo == 'left' %}medium-up--one-quarter{% else %}medium-up--one-third medium-up--push-one-third{% endif %} text-right site-header__icons{% if shop.customer_accounts_enabled %} site-header__icons--plus{% endif %}">
-        <div class="site-header__icons-wrapper">
-          <div class="site-header__search site-header__icon">
-            {% include 'search-form' %}
-          </div>
-
-          <button type="button" class="btn--link site-header__icon site-header__search-toggle js-drawer-open-top">
-            {% include 'icon-search' %}
-            <span class="icon__fallback-text">{{ 'layout.navigation.search' | t }}</span>
-          </button>
-
-          {% if shop.customer_accounts_enabled %}
-            {% if customer %}
-              <a href="/account" class="site-header__icon site-header__account">
-                {% include 'icon-login' %}
-                <span class="icon__fallback-text">{{ 'layout.customer.account' | t }}</span>
-              </a>
-            {% else %}
-              <a href="/account/login" class="site-header__icon site-header__account">
-                {% include 'icon-login' %}
-                <span class="icon__fallback-text">{{ 'layout.customer.log_in' | t }}</span>
-              </a>
-            {% endif %}
-          {% endif %}
-
-          <a href="/cart" class="site-header__icon site-header__cart">
-            {% include 'icon-cart' %}
-            <span class="icon__fallback-text">{{ 'layout.cart.title' | t }}</span>
-            {% if cart.item_count > 0 %}
-              <div id="CartCount" class="site-header__cart-count">
-                <span>{{ cart.item_count }}</span>
-                <span class="icon__fallback-text medium-up--hide">{{ 'layout.cart.items_count' | t: count: cart.item_count }}</span>
+            {% if logo_alignment == 'left' %}
+              <div class="header-item header-item--logo">
+                {% include 'header-logo-block' %}
               </div>
             {% endif %}
-          </a>
 
-          {% if shop.enabled_currencies.size > 1 %}
-            {% form 'currency', class: "currency-selector small--hide" %}
-              <label for="CurrencySelector" class="visually-hidden">{{ 'general.currency.dropdown_label' | t }}</label>
-              <div class="currency-selector__input-wrapper select-group">
-                <select name="currency" id="CurrencySelector" class="currency-selector__dropdown" aria-describedby="a11y-refresh-page-message" data-currency-selector>
-                  {% for currency in shop.enabled_currencies %}
-                    <option value="{{currency.iso_code}}"{% if currency == cart.currency %} selected="true"{% endif %}>{{currency.iso_code}}</option>
-                  {% endfor %}
-                </select>
-                {% include 'icon-chevron-down' %}
+            {% if logo_alignment == 'left' and section.settings.main_menu_alignment != 'left-drawer' %}
+              <div class="header-item header-item--navigation{% if section.settings.main_menu_alignment == 'left-center' %} text-center{% endif %}">
+                {% include 'header-desktop-nav' %}
               </div>
-            {% endform %}
-          {% endif %}
+            {% endif %}
 
-          {% unless linklists[section.settings.main_linklist] == blank %}
-            <button type="button" class="btn--link site-header__icon site-header__menu js-mobile-nav-toggle mobile-nav--open" aria-controls="MobileNav"  aria-expanded="false" aria-label="{{ 'layout.navigation.menu' | t }}">
-              {% include 'icon-hamburger' %}
-              {% include 'icon-close' %}
-            </button>
-          {% endunless %}
-        </div>
-
-      </div>
-    </div>
-
-    <nav class="mobile-nav-wrapper medium-up--hide" role="navigation">
-      <ul id="MobileNav" class="mobile-nav">
-        {% for link in linklists[section.settings.main_linklist].links %}
-          {%- assign outerLoopIndex = forloop.index -%}
-
-          <li class="mobile-nav__item{% unless forloop.last %} border-bottom{% endunless %}">
-            {% if link.links != blank %}
-              {% capture child_list_handle %}{{ link.handle }}-{{ outerLoopIndex }}{% endcapture %}
-              <button type="button" class="btn--link js-toggle-submenu mobile-nav__link{% if link.child_active %} mobile-nav__link--active{% endif %}" data-target="{{ child_list_handle }}" data-level="1" aria-expanded="false">
-                <span class="mobile-nav__label">{{ link.title | escape }}</span>
-                <div class="mobile-nav__icon">
-                  {% include 'icon-chevron-right' %}
-                </div>
-              </button>
-              <ul class="mobile-nav__dropdown" data-parent="{{ child_list_handle }}" data-level="2">
-                <li class="visually-hidden" tabindex="-1" data-menu-title="2">
-                  {{- link.title }} {{ 'layout.navigation.menu' | t -}}
-                </li>
-                <li class="mobile-nav__item border-bottom">
-                  <div class="mobile-nav__table">
-                    <div class="mobile-nav__table-cell mobile-nav__return">
-                      <button class="btn--link js-toggle-submenu mobile-nav__return-btn" type="button" aria-expanded="true" aria-label="{{ link.title }}">
-                        {% include 'icon-chevron-left' %}
-                      </button>
-                    </div>
-                    <span class="mobile-nav__sublist-link mobile-nav__sublist-header mobile-nav__sublist-header--main-nav-parent">
-                      <span class="mobile-nav__label">{{ link.title | escape }}</span>
-                    </span>
-                  </div>
-                </li>
-
-                {% for childlink in link.links %}
-                  <li class="mobile-nav__item{% unless forloop.last %} border-bottom{% endunless %}">
-                    {% if childlink.links != blank %}
-                      {% capture grandchild_list_handle %}{{ childlink.handle }}-{{ outerLoopIndex }}-{{ forloop.index }}{% endcapture %}
-                      <button type="button" class="btn--link js-toggle-submenu mobile-nav__link mobile-nav__sublist-link" data-target="{{ grandchild_list_handle }}" aria-expanded="false">
-                        <span class="mobile-nav__label">{{ childlink.title | escape }}</span>
-                        <div class="mobile-nav__icon">
-                          {% include 'icon-chevron-right' %}
-                        </div>
-                      </button>
-                      <ul class="mobile-nav__dropdown" data-parent="{{ grandchild_list_handle }}" data-level="3">
-                        <li class="visually-hidden" tabindex="-1" data-menu-title="3">
-                          {{- childlink.title }} {{ 'layout.navigation.menu' | t -}}
-                        </li>
-                        <li class="mobile-nav__item border-bottom">
-                          <div class="mobile-nav__table">
-                            <div class="mobile-nav__table-cell mobile-nav__return">
-                              <button type="button" class="btn--link js-toggle-submenu mobile-nav__return-btn" data-target="{{ child_list_handle }}" aria-expanded="true" aria-label="{{ childlink.title }}">
-                                {% include 'icon-chevron-left' %}
-                              </button>
-                            </div>
-                            <a href="{{ childlink.url }}"
-                              class="mobile-nav__sublist-link mobile-nav__sublist-header"
-                              {% if childlink.current %} aria-current="page"{% endif %}
-                            >
-                              <span class="mobile-nav__label">{{ childlink.title | escape }}</span>
-                            </a>
-                          </div>
-                        </li>
-                        {% for grandchildlink in childlink.links %}
-                          <li class="mobile-nav__item{% unless forloop.last %} border-bottom{% endunless %}">
-                            <a href="{{ grandchildlink.url }}"
-                              class="mobile-nav__sublist-link"
-                              {% if grandchildlink.current %} aria-current="page"{% endif %}
-                            >
-                              <span class="mobile-nav__label">{{ grandchildlink.title | escape }}</span>
-                            </a>
-                          </li>
-                        {% endfor %}
-                      </ul>
-                    {% else %}
-                      <a href="{{ childlink.url }}"
-                        class="mobile-nav__sublist-link"
-                        {% if childlink.current %} aria-current="page"{% endif %}
-                      >
-                        <span class="mobile-nav__label">{{ childlink.title | escape }}</span>
+            {% if logo_alignment == 'center' %}
+              <div class="header-item header-item--left header-item--navigation">
+                {% if section.settings.main_menu_alignment == 'center' or section.settings.main_menu_alignment == 'center-split' %}
+                  {% if section.settings.header_search_enable %}
+                    <div class="site-nav small--hide">
+                      <a href="/search" class="site-nav__link site-nav__link--icon js-search-header js-no-transition">
+                        {% include 'icon-search' %}
+                        <span class="icon__fallback-text">{{ 'general.search.title' | t }}</span>
                       </a>
-                    {% endif %}
-                  </li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              <a href="{{ link.url }}"
-                class="mobile-nav__link{% if link.active %} mobile-nav__link--active{% endif %}"
-                {% if link.current %} aria-current="page"{% endif %}
-              >
-                <span class="mobile-nav__label">{{ link.title | escape }}</span>
-              </a>
-            {% endif %}
-          </li>
-        {% endfor %}
-        {% if shop.enabled_currencies.size > 1 %}
-          <li class="mobile-nav__item border-top">
-            {% form 'currency', class: "currency-selector" %}
-              <label for="CurrencySelectorMobile" class="currency-selector__label">{{ 'general.currency.dropdown_label' | t }}</label>
-              <div class="currency-selector__input-wrapper select-group">
-                <select name="currency" id="CurrencySelectorMobile" class="currency-selector__dropdown" aria-describedby="a11y-refresh-page-message" data-currency-selector>
-                  {% for currency in shop.enabled_currencies %}
-                    <option value="{{currency.iso_code}}"{% if currency == cart.currency %} selected="true"{% endif %}>{{currency.iso_code}}</option>
-                  {% endfor %}
-                </select>
-                {% include 'icon-chevron-down' %}
-              </div>
-            {% endform %}
-          </li>
-        {% endif %}
-      </ul>
-    </nav>
-  </header>
+                    </div>
+                  {% endif %}
+                {% endif %}
 
-  {% if section.settings.align_logo == 'center' %}
-  <nav class="small--hide border-bottom" id="AccessibleNav" role="navigation">
-    {% include 'site-nav', nav_alignment: 'site-nav--centered' %}
-  </nav>
-  {% endif %}
+                {% if section.settings.main_menu_alignment == 'center-left' %}
+                  {% include 'header-desktop-nav' %}
+                {% endif %}
+
+                <div class="site-nav{% unless section.settings.main_menu_alignment == 'center-drawer' %} medium-up--hide{% endunless %}">
+                  <button
+                    type="button"
+                    class="site-nav__link site-nav__link--icon js-drawer-open-nav"
+                    aria-controls="NavDrawer">
+                    {% include 'icon-hamburger' %}
+                    <span class="icon__fallback-text">{{ 'general.drawers.navigation' | t }}</span>
+                  </button>
+                </div>
+              </div>
+
+              {% if section.settings.main_menu_alignment == 'center-split' %}
+                {% include 'header-split-nav' %}
+              {% endif %}
+
+              {% if section.settings.main_menu_alignment != 'center-split' %}
+                <div class="header-item header-item--logo">
+                  {% include 'header-logo-block' %}
+                </div>
+              {% endif %}
+            {% endif %}
+
+            <div class="header-item header-item--icons">
+              {% include 'header-icons' %}
+            </div>
+          </div>
+
+          {% if section.settings.main_menu_alignment == 'center' %}
+            <div class="text-center">
+              {% include 'header-desktop-nav' %}
+            </div>
+          {% endif %}
+        </div>
+        <div class="site-header__search-container">
+          <div class="site-header__search">
+            <div class="page-width">
+              <form action="/search" method="get" class="site-header__search-form" role="search">
+                {% if settings.search_results == 'products' %}
+                  <input type="hidden" name="type" value="product">
+                {% endif %}
+                <button type="submit" class="text-link site-header__search-btn">
+                  {% include 'icon-search' %}
+                  <span class="icon__fallback-text">{{ 'general.search.submit' | t }}</span>
+                </button>
+                <input type="search" name="q" value="{{ search.terms | escape }}" placeholder="{{ 'general.search.placeholder' | t }}" class="site-header__search-input" aria-label="{{ 'general.search.placeholder' | t }}">
+              </form>
+              <button type="button" class="js-search-header-close text-link site-header__search-btn">
+                {% include 'icon-close' %}
+                <span class="icon__fallback-text">{{ 'general.accessibility.close_modal' | t | json }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  {% unless overlay_header %}
+    {% include 'announcement-bar' %}
+  {% endunless %}
 </div>
 
-
-
-<script type="application/ld+json">
-{
-  "@context": "http://schema.org",
-  "@type": "Organization",
-  "name": "{{ shop.name }}",
-  {% if section.settings.logo %}
-    {% assign image_size = section.settings.logo.width | append:'x' %}
-    "logo": "https:{{ section.settings.logo | img_url: image_size }}",
-  {% endif %}
-  "sameAs": [
-    "{{ settings.social_twitter_link }}",
-    "{{ settings.social_facebook_link }}",
-    "{{ settings.social_pinterest_link }}",
-    "{{ settings.social_instagram_link }}",
-    "{{ settings.social_tumblr_link }}",
-    "{{ settings.social_snapchat_link }}",
-    "{{ settings.social_youtube_link }}",
-    "{{ settings.social_vimeo_link }}"
-  ],
-  "url": "{{ shop.url }}{{ page.url }}"
-}
-</script>
-
-{% if template.name == 'index' %}
-  <script type="application/ld+json">
-    {
-      "@context": "http://schema.org",
-      "@type": "WebSite",
-      "name": "{{ shop.name }}",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "{{ shop.url }}/search?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      },
-      "url": "{{ shop.url }}{{ page.url }}"
-    }
-  </script>
-{% endif %}
-
 {% schema %}
-{
-  "name": {
-    "de": "Titel",
-    "en": "Header",
-    "es": "Encabezado",
-    "fr": "En-tête",
-    "it": "Header",
-    "ja": "ヘッダー",
-    "pt-BR": "Cabeçalho"
-  },
-  "settings": [
-    {
-      "type": "radio",
-      "id": "align_logo",
-      "label": {
-        "de": "Logo-Ausrichtung",
-        "en": "Logo alignment",
-        "es": "Alineación de logotipo",
-        "fr": "Alignement du logo",
-        "it": "Allineamento logo",
-        "ja": "ロゴアラインメント",
-        "pt-BR": "Alinhamento do logotipo"
+  {
+    "name": "Header",
+    "settings": [
+      {
+        "type": "link_list",
+        "id": "main_menu_link_list",
+        "label": "Navigation",
+        "default": "main-menu"
       },
-      "default": "left",
-      "options": [
-        {
-          "value": "left",
-          "label": {
-            "de": "Links",
-            "en": "Left",
-            "es": "Izquierda",
-            "fr": "Gauche",
-            "it": "Sinistra",
-            "ja": "左",
-            "pt-BR": "Esquerda"
+      {
+        "type": "select",
+        "id": "main_menu_alignment",
+        "label": "Header layout",
+        "default": "left",
+        "options": [
+          {
+            "value": "left",
+            "label": "Logo left, menu left"
+          },
+          {
+            "value": "left-center",
+            "label": "Logo left, menu center"
+          },
+          {
+            "value": "left-drawer",
+            "label": "Logo left, menu drawer"
+          },
+          {
+            "value": "center-left",
+            "label": "Logo center, menu left"
+          },
+          {
+            "value": "center-split",
+            "label": "Logo center, menu split"
+          },
+          {
+            "value": "center",
+            "label": "Logo center, menu below"
+          },
+          {
+            "value": "center-drawer",
+            "label": "Logo center, menu drawer"
           }
-        },
-        {
-          "value": "center",
-          "label": {
-            "de": "Mittig",
-            "en": "Centered",
-            "es": "Centrada",
-            "fr": "Centré",
-            "it": "Centrato",
-            "ja": "中央揃え",
-            "pt-BR": "Centralizado"
+        ]
+      },
+      {
+        "type": "select",
+        "id": "header_style",
+        "label": "Header style",
+        "default": "normal",
+        "options": [
+          {
+            "value": "normal",
+            "label": "Normal"
+          },
+          {
+            "value": "sticky",
+            "label": "Sticky"
           }
-        }
-      ]
-    },
-    {
-      "type": "image_picker",
-      "id": "logo",
-      "label": {
-        "de": "Logo-Foto",
-        "en": "Logo image",
-        "es": "Logotipo",
-        "fr": "Image du logo",
-        "it": "Immagine del logo",
-        "ja": "ロゴ画像",
-        "pt-BR": "Imagem do logotipo"
+        ]
+      },
+      {
+        "type": "checkbox",
+        "id": "sticky_index",
+        "label": "Overlay header over home page",
+        "default": false
+      },
+      {
+        "type": "checkbox",
+        "id": "sticky_collection",
+        "label": "Overlay header over collection",
+        "info": "(if collection image is enabled)",
+        "default": false
+      },
+      {
+        "type": "checkbox",
+        "id": "header_search_enable",
+        "label": "Show search icon"
+      },
+      {
+        "type": "header",
+        "content": "Toolbar"
+      },
+      {
+        "type": "link_list",
+        "id": "toolbar_menu",
+        "label": "Navigation",
+        "info": "This menu won't show dropdown items"
+      },
+      {
+        "type": "checkbox",
+        "id": "toolbar_social",
+        "label": "Show social icons"
+      },
+      {
+        "type": "checkbox",
+        "id": "toolbar_currencies",
+        "label": "Show currency converter",
+        "info": "Must be enabled in 'Cart and currencies'"
+      },
+      {
+        "type": "header",
+        "content": "Announcement bar"
+      },
+      {
+        "type": "checkbox",
+        "id": "announcement_compact",
+        "label": "Use compact style"
       }
-    },
-    {
-      "type": "range",
-      "id": "logo_max_width",
-      "label": {
-        "de": "Logobreite",
-        "en": "Custom logo width",
-        "es": "Ancho del logotipo personalizado",
-        "fr": "Largeur personnalisée du logo",
-        "it": "Larghezza logo personalizzato",
-        "ja": "ロゴの幅をカスタムする",
-        "pt-BR": "Largura do logotipo personalizado"
+    ],
+    "blocks": [
+      {
+        "type": "logo",
+        "name": "Logo",
+        "limit": 1,
+        "settings": [
+          {
+            "type": "image_picker",
+            "id": "logo",
+            "label": "Logo"
+          },
+          {
+            "type": "image_picker",
+            "id": "logo-inverted",
+            "label": "White logo",
+            "info": "Used when on top of an image"
+          },
+          {
+            "type": "range",
+            "id": "desktop_logo_width",
+            "label": "Desktop logo width",
+            "default": 200,
+            "min": 100,
+            "max": 400,
+            "step": 10,
+            "unit": "px"
+          },
+          {
+            "type": "range",
+            "id": "mobile_logo_width",
+            "label": "Mobile logo width",
+            "default": 140,
+            "min": 60,
+            "max": 200,
+            "step": 10,
+            "unit": "px",
+            "info": "Set as a max-width, may appear smaller"
+          }
+        ]
       },
-      "min": 50,
-      "max": 250,
-      "step": 5,
-      "unit": {
-        "de": "px",
-        "en": "px",
-        "es": "px",
-        "fr": "px",
-        "it": "px",
-        "ja": "px",
-        "pt-BR": "px"
-      },
-      "default": 100
-    },
-    {
-      "type": "link_list",
-      "id": "main_linklist",
-      "label": {
-        "de": "Menü",
-        "en": "Menu",
-        "es": "Menú",
-        "fr": "Menu",
-        "it": "Menu",
-        "ja": "メニュー",
-        "pt-BR": "Menu"
-      },
-      "default": "main-menu"
-    },
-    {
-      "type": "header",
-      "content": {
-        "de": "Ankündigungsbereich",
-        "en": "Announcement bar",
-        "es": "Barra de anuncios",
-        "fr": "Barre d'annonces",
-        "it": "Barra degli annunci",
-        "ja": "告知バー",
-        "pt-BR": "Barra de anúncios"
+      {
+        "type": "announcement",
+        "name": "Announcement",
+        "limit": 3,
+        "settings": [
+          {
+            "type": "text",
+            "id": "text",
+            "label": "Heading",
+            "default": "Hassle-free returns"
+          },
+          {
+            "type": "text",
+            "id": "link_text",
+            "label": "Text",
+            "default": "30-day postage paid returns"
+          },
+          {
+            "type": "url",
+            "id": "link",
+            "label": "Link"
+          }
+        ]
       }
-    },
-    {
-      "type": "checkbox",
-      "id": "message",
-      "label": {
-        "de": "Ankündigung anzeigen",
-        "en": "Show announcement",
-        "es": "Mostrar anuncio",
-        "fr": "Afficher l'annonce",
-        "it": "Mostra annuncio",
-        "ja": "告知を表示する",
-        "pt-BR": "Exibir anúncio"
-      },
-      "default": false
-    },
-    {
-      "type": "checkbox",
-      "id": "home_page_only",
-      "label": {
-        "de": "Nur Startseite",
-        "en": "Home page only",
-        "es": "Solo página de inicio",
-        "fr": "Page d'accueil uniquement",
-        "it": "Solo home page",
-        "ja": "ホームページのみ",
-        "pt-BR": "Apenas página inicial"
-      },
-      "default": true
-    },
-    {
-      "type": "text",
-      "id": "message_text",
-      "label": {
-        "de": "Text",
-        "en": "Text",
-        "es": "Texto",
-        "fr": "Texte",
-        "it": "Testo",
-        "ja": "テキスト",
-        "pt-BR": "Texto"
-      },
-      "default": {
-        "de": "Hier etwas ankündigen",
-        "en": "Announce something here",
-        "es": "Anuncia algo aquí",
-        "fr": "Annoncez quelque chose ici",
-        "it": "Annuncia qualcosa qui",
-        "ja": "ここで告知してください",
-        "pt-BR": "Anuncie algo aqui"
-      }
-    },
-    {
-      "type": "url",
-      "id": "message_link",
-      "label": {
-        "de": "Link",
-        "en": "Link",
-        "es": "Enlace",
-        "fr": "Lien",
-        "it": "Link",
-        "ja": "リンク",
-        "pt-BR": "Link"
-      },
-      "info": {
-        "de": "Optional",
-        "en": "Optional",
-        "es": "Opcional",
-        "fr": "Facultatif",
-        "it": "Facoltativo",
-        "ja": "選択させる",
-        "pt-BR": "Opcional"
-      }
-    },
-    {
-      "type": "color",
-      "id": "color_bg",
-      "label": {
-        "de": "Zeile",
-        "en": "Bar",
-        "es": "Barra",
-        "fr": "Barre",
-        "it": "Barra",
-        "ja": "バー",
-        "pt-BR": "Barra"
-      },
-      "default": "#7796a8"
-    },
-    {
-      "type": "color",
-      "id": "color_text",
-      "label": {
-        "de": "Text",
-        "en": "Text",
-        "es": "Texto",
-        "fr": "Texte",
-        "it": "Testo",
-        "ja": "テキスト",
-        "pt-BR": "Texto"
-      },
-      "default": "#fff"
+    ],
+    "default": {
+      "settings": {}
     }
-  ]
-}
+  }
 {% endschema %}
